@@ -1,32 +1,35 @@
 services:
   web:
     build: .
-    ports:
-      - "8000:8000"
-    volumes:
-      - .:/app
-    env_file:
-      - .env
+    env_file: [.env]
+    volumes: [".:/app"]
     depends_on:
       db:
         condition: service_healthy
     restart: always
+    # ไม่ต้องเปิดพอร์ตออก ให้ nginx ยิงเข้า web
+
+  nginx:
+    image: nginx:1.27-alpine
+    depends_on: [web]
+    ports:
+      - "80:80" 
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./staticfiles:/app/staticfiles:ro
+      - ./media:/app/media:ro
 
   db:
     image: postgres:16
-    restart: always
-    env_file:
-      - .env
+    env_file: [.env]
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    ports:
-      - "5433:5432"     
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: ["CMD-SHELL","pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 20
